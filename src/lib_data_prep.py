@@ -42,7 +42,8 @@ def prepare_trip_data(data: pd.DataFrame) -> pd.DataFrame:
     - Convert trip duration to minutes.
     - Remove trips without start station id.
     - Build 'is_registered' feature.
-    - Added average trip time from start station over the 7 days ahead of the trip.
+    - Added average trip time from start station over the 7 days ahead of the trip. Trips longer than
+        90 minutes have been ignored.
     - Add cyclic variables for day of the week (`dow_sin` and `dow_cos`).
     - Drop unnecessary/unusable columns.
 
@@ -72,7 +73,7 @@ def prepare_trip_data(data: pd.DataFrame) -> pd.DataFrame:
         H, M, _ = time.split(':')
         return datetime(year=int(y), month=int(m), day=int(d), hour=int(H), minute=int(M))
     data['start_date'] = data['start_date'].apply(_to_datetime)
-    data.loc[:, 'start_date_trunc'] = data.start_date.dt.floor('D')
+    data['start_date_trunc'] = data['start_date'].dt.floor('D')
 
     # TODO: use for quality check
     data['end_date'] = data['end_date'].apply(_to_datetime)
@@ -81,7 +82,8 @@ def prepare_trip_data(data: pd.DataFrame) -> pd.DataFrame:
 
     # Add average trip duration (per station, per date)
     # Date dependency is based on average over previous 7 days.
-    avg_duration_prev_7days_from_statn = compute_average_trip_time_from_station(data, window_days=7)
+    avg_duration_prev_7days_from_statn = compute_average_trip_time_from_station(
+        data, window_days=7, max_trip_duration=90.0)
     data = data.merge(
         avg_duration_prev_7days_from_statn,
         on=['strt_statn', 'start_date_trunc'],
@@ -105,21 +107,31 @@ def prepare_trip_data(data: pd.DataFrame) -> pd.DataFrame:
 
 def compute_average_trip_time_from_station(
     trip_data: pd.DataFrame,
-    window_days: int = 7
+    window_days: int = 7,
+    max_trip_duration: float = None,
 ) -> pd.DataFrame:
     """Compute the average trip time per starting hub station, per date. The dependence on the date
     allows accounting for changes in average trip time due to changes in users behavior and typical
     routes (e.g. new routes becoming popular as new stations are added to the network).
 
+    Note:
+    - After winter periods, when bikes have not been used for a while, the average trip time is 
+    computed based on earliest available trips. 
+    - Average trip time is not available for first `window_days` days after a hub station has been opened.
+
     Args:
         trip_data (pd.DataFrame): data from trips dataset.
         window_days (int, optional): Window over which the average trip time is computed. Defaults 
-        to 7.
+            to 7.
+        max_trip_duration (float, optional): If given, removes from average trips longer than a given 
+            threshold.
 
     Returns:
         pd.DataFrame: A dataframe with columns 'strt_statn', 'start_date_trunc', 'avg_duration_prev_7days'.
     """
 
+    if max_trip_duration:
+        trip_data = trip_data.query(f'duration_min <= {max_trip_duration}')
     trip_data = trip_data.sort_values('start_date')
 
     # get total trips duration (and count) for each station for each date
