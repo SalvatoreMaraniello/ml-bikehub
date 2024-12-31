@@ -1,25 +1,30 @@
-# UrbanBike: bicycle availability forecasting
+# UrbanBike: forecasting bike trips duration
 
-This model forecasts available bicycle capacity over the next 30–90 mins for app customers.
+In this repo, we build a ML model that predicts the duration of the bike trips from the time a bike is picked up from a docking station to the time it is returned to a docking station. This model is intended to be part of a larger service aiming at forecasting available bicycle capacity over the next 30–90 mins for app customers.
 
-A key step in predicting capacity is to predict the duration of the bike trips from the time a bike is picked up from a docking station to the time it is returned to a docking station. To make these predictions, UrbanBike has given us data relating to their bike docking stations, historical trips, and weather data.
+- The ML model is built starting from data relating to their bike docking stations, historical trips, and weather data (see [data](data) folder).
 
-The model is served as a REST API (see [Development setup](#development-setup) for testing the REST API locally).
+- The model development is showcased in the notebooks in the [studies](studies) folder. See the [Repo content](#repo-content) section for more details.
 
-
-# Baseline model
-- Average time and weather.
+- The model is served as a REST API (see [Development setup](#development-setup) for testing the REST API locally).
 
 
 ## Repo content
 
-- `src`: 
+- [studies](studies): includes the following notebooks (numbered in reading order):
 
-- `app`: source code for minimal REST API.
+  1. [00-dataset-overview.ipynb](studies/00-dataset-overview.ipynb). A quick overview of dataset provided. Data are not merged into a single dataset for analysis. *You can skip this if in a hurry*.
+  2. [01-data-prep.ipynb](studies/01-data-prep.ipynb). Data from different sources is merged together into a unique dataset for exploratory data analysis and training. 
+  3. [02-exploratory-data-analysis.ipynb](studies/02-exploratory-data-analysis.ipynb). Exploratory data analysis, complementing [00-dataset-overview.ipynb](studies/00-dataset-overview.ipynb).
+  4. [03-model-training.ipynb](studies/03-model-training.ipynb) This notebook includes model training and selection.
 
+- [src](src): includes a few libraries used by the notebooks and scripts in [studies](studies) and [scripts](scripts)
 
+- [app](app): source code for a minimal REST API. See [Rest API testing](#rest-api-testing) for local testing from terminal and/or using Docker.
+
+<!-- 
 - Testing tools are found [./test](`test`). See [Testing](#Testing) section.
-
+ -->
 
 
 # Development setup
@@ -35,6 +40,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+<!-- 
 ## Testing
 From project root run:
 
@@ -47,8 +53,7 @@ python -m pytest
 - To test only API endpoints:
   ```sh
   python -m pytest test/test_api_requests.py
-  ```
-
+  ``` -->
 
 
 # REST API testing
@@ -98,19 +103,24 @@ You can test the `uvicorn` server locally both from terminal or using Docker:
 
 The service is available at `http://localhost:5000`.
 
-- For available endpoints, see [`http://localhost:5000/docs`](http://localhost:5000/docs), from where you can also send requests to the server!
+See [`http://localhost:5000/docs`](http://localhost:5000/docs) for a list of available endpoints - from where you can also send requests to the server.
 
-- To send requests programmatically:
+You can also send requests from terminal using `curl`:
+```sh
+curl -X 'POST' \
+  'http://localhost:5000/api/v1/predict' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "avg_duration_prev_7days": 13.5,
+  "HPCP": 0.2,
+  "dow": 5,
+  "is_registered": false,
+  "has_trace": false
+}'
+```
 
-  - from shell using `curl` (see [`making-api-requests.md`](docs/making-api-requests.md) for more):
-    ```sh
-    # Requires run from project root, else update path to PDF
-    curl -X 'POST' \
-      'http://localhost:5000/api/v1/predict' \
-      -H 'Content-Type: multipart/form-data'
-    ```
-
-  - using python (see [`test/test_api_requests.py`](test/test_api_requests.py) for more):
+  <!-- - using python (see [`test/test_api_requests.py`](test/test_api_requests.py) for more):
     ```python 
     # run from project root or update `path_to_file`
     import requests
@@ -128,4 +138,4 @@ The service is available at `http://localhost:5000`.
         raise requests.exceptions.RequestException(
             f'Something went wrong. Got status {response.status_code}.'
         )
-    ```
+    ``` -->
