@@ -19,3 +19,8 @@ scipy
 seaborn
 statsmodels
 nbformat
+xgboost
+pydantic
+shap
+fastapi
+uvicorn
